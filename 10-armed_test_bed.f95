@@ -16,8 +16,8 @@ program TestBed
 
     !-------------------- * Declaring the variables * ------------------------
 
-    real,allocatable,dimension(:) :: q_star, reward_given
-    integer :: i, j,  n_steps, n_test, k, A
+    real, allocatable, dimension(:) :: q_star, reward_given, Q, N
+    integer :: i, j,  n_steps, n_test, k, A, counter
     real :: epsilon, reward
 
 
@@ -33,7 +33,7 @@ program TestBed
     ! The epsilon value for the epsilon greedy algorithm
     epsilon = 0.9
 
-    ! The estimated action value for an action:
+    ! The 'real' action value for an action:
     allocate(q_star(k))
 
     ! Initialising the array to store the results
@@ -46,15 +46,32 @@ program TestBed
     ! Initialising the values of q_star
     call initialise_action_value(q_star, k)
 
+    ! The estimated action value for an action:
+    allocate(Q(k))
+
+    ! The number of times that action has been chosen:
+    allocate(N(k))
+
     !-------------------- * Main bandit loop * ------------------------
-    do k = 1, n_test
+    do counter = 1, n_test
+
+        ! Re-initialising the estimate for the action value and the number of times each action has been picked
+        do i = 1, k
+            Q(i) = 0
+            N(i) = 0
+        end do
+
+        ! Main Learning loop
         do i = 1, n_steps
 
-            ! TODO need to modify so that they use sampled averages for the estimate of qstar
-            call chose_action_eps_greedy(q_star, k, epsilon, A)
+            call chose_action_eps_greedy(Q, k, epsilon, A)
             call calculate_reward(A, k, q_star, reward)
 
             reward_given(i) = reward_given(i) + reward
+
+            !Update N and Q
+            N(A) = N(A) + 1
+            Q(A) = Q(A) + 1/(N(A)) * (reward - Q(A))
 
         end do
     end do
@@ -133,7 +150,7 @@ subroutine chose_action_eps_greedy(Q, k, epsilon, A)
 end subroutine
 
 
-! This subroutine calculates the reward for each action chosen
+! This subroutine calculates the reward for each action chosen based on the real action value
 subroutine calculate_reward(A, k, action_value, reward)
     implicit none
 
